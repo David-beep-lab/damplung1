@@ -7,36 +7,98 @@
   const storage = window.firebaseStorage;
   const cache = { users: [], profiles: {}, likes: {}, superLikes: {}, passed: {}, favorites: {}, chats: {}, notifications: {}, currentUser: null };
 
-  window.initFirebase = async function() {
-    try {
-      const [usersSnap, profilesSnap, likesSnap, favSnap, passedSnap, superSnap, notifSnap] = await Promise.all([
-        db.collection('users').get(),
-        db.collection('profiles').get(),
-        db.collection('likes').get(),
-        db.collection('favorites').get(),
-        db.collection('passed').get(),
-        db.collection('superLikes').get(),
-        db.collection('notifications').get()
-      ]);
-      cache.users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      profilesSnap.docs.forEach(d => { cache.profiles[d.id] = d.data(); });
-      likesSnap.docs.forEach(d => { cache.likes[d.id] = d.data().ids || []; });
-      favSnap.docs.forEach(d => { cache.favorites[d.id] = d.data().ids || []; });
-      passedSnap.docs.forEach(d => { cache.passed[d.id] = d.data().ids || []; });
-      superSnap.docs.forEach(d => { cache.superLikes[d.id] = d.data().ids || []; });
-      notifSnap.docs.forEach(d => { cache.notifications[d.id] = (d.data().items || []).sort((a,b) => (b.ts||0) - (a.ts||0)); });
-      const chatsSnap = await db.collection('chats').get();
-      chatsSnap.docs.forEach(d => { cache.chats[d.id] = d.data().messages || []; });
-      if (auth.currentUser) {
-        const uid = auth.currentUser.uid;
-        const userDoc = await db.collection('users').doc(uid).get();
-        if (userDoc.exists) cache.currentUser = { id: uid, ...userDoc.data() };
-      } else {
-        const saved = localStorage.getItem('sh_currentUser');
-        if (saved) try { cache.currentUser = JSON.parse(saved); } catch (_) {}
+  window.initFirebase = function() {
+    return new Promise((resolve) => {
+      let resolved = false;
+      function done() {
+        if (!resolved) { resolved = true; resolve(); }
       }
-    } catch (e) { console.warn('Firebase init load failed', e); }
+
+      auth.onAuthStateChanged(async (firebaseUser) => {
+        try {
+          const [usersSnap, profilesSnap, likesSnap, favSnap, passedSnap, superSnap, notifSnap] = await Promise.all([
+            db.collection('users').get(),
+            db.collection('profiles').get(),
+            db.collection('likes').get(),
+            db.collection('favorites').get(),
+            db.collection('passed').get(),
+            db.collection('superLikes').get(),
+            db.collection('notifications').get()
+          ]);
+          cache.users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          profilesSnap.docs.forEach(d => { cache.profiles[d.id] = d.data(); });
+          likesSnap.docs.forEach(d => { cache.likes[d.id] = (d.data().ids || []); });
+          favSnap.docs.forEach(d => { cache.favorites[d.id] = (d.data().ids || []); });
+          passedSnap.docs.forEach(d => { cache.passed[d.id] = (d.data().ids || []); });
+          superSnap.docs.forEach(d => { cache.superLikes[d.id] = (d.data().ids || []); });
+          notifSnap.docs.forEach(d => { cache.notifications[d.id] = (d.data().items || []).sort((a,b) => (b.ts||0) - (a.ts||0)); });
+          const chatsSnap = await db.collection('chats').get();
+          chatsSnap.docs.forEach(d => { cache.chats[d.id] = (d.data().messages || []); });
+
+          if (firebaseUser) {
+            const uid = firebaseUser.uid;
+            const userDoc = await db.collection('users').doc(uid).get();
+            if (userDoc.exists) {
+              const u = { id: uid, ...userDoc.data() };
+              cache.currentUser = u;
+              setCurrentUser(u);
+              if (!cache.users.some(x => x.id === uid)) cache.users.push(u);
+            }
+          } else {
+            cache.currentUser = null;
+            setCurrentUser(null);
+          }
+        } catch (e) { console.warn('Firebase init load failed', e); }
+        done();
+      });
+    });
   };
+
+  async function register(email, password, profileData) {
+    const uc = await auth.createUserWithEmailAndPassword(email, password);
+    const uid = uc.user.uid;
+    const user = {
+      id: uid,
+      email,
+      username: profileData.username || (email.split('@')[0]),
+      userType: profileData.userType || 'talent',
+      role: profileData.role || [],
+      focus: profileData.focus || [],
+      createdAt: Date.now()
+    };
+    await db.collection('users').doc(uid).set(user);
+    await db.collection('profiles').doc(uid).set({
+      ...(profileData.bio && { bio: profileData.bio }),
+      ...(profileData.status && { status: profileData.status }),
+      role: profileData.role || [],
+      focus: profileData.focus || [],
+      updatedAt: Date.now()
+    }, { merge: true });
+    cache.users = cache.users.filter(u => u.id !== uid).concat([user]);
+    cache.profiles[uid] = { ...cache.profiles[uid], role: user.role, focus: user.focus };
+    setCurrentUser(user);
+    cache.currentUser = user;
+    return user;
+  }
+
+  async function login(email, password) {
+    await auth.signInWithEmailAndPassword(email, password);
+    const uid = auth.currentUser.uid;
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) throw new Error('User document not found');
+    const user = { id: uid, ...userDoc.data() };
+    setCurrentUser(user);
+    cache.currentUser = user;
+    if (!cache.users.some(x => x.id === uid)) cache.users.push(user);
+    return user;
+  }
+
+  function logout() {
+    return auth.signOut().then(() => {
+      setCurrentUser(null);
+      cache.currentUser = null;
+    });
+  }
 
   function getUsers() {
     if (cache.users.length) return cache.users;
@@ -166,6 +228,7 @@
 
   window.firebaseBackend = {
     init: window.initFirebase,
+    register, login, logout,
     getUsers, saveUsers, getProfile, saveProfile, getCurrentUser, setCurrentUser,
     getLikes, addLike, removeLike, getSuperLikes, addSuperLike, removeSuperLike, getPassed, addPassed, removePassed,
     getFavorites, addFavorite, removeFavorite, getChatBetween, addChatMessage,
@@ -175,6 +238,7 @@
   var f = window.firebaseBackend;
   window.getUsers = f.getUsers; window.saveUsers = f.saveUsers; window.getProfile = f.getProfile; window.saveProfile = f.saveProfile;
   window.getCurrentUser = f.getCurrentUser; window.setCurrentUser = f.setCurrentUser;
+  window.firebaseRegister = f.register; window.firebaseLogin = f.login; window.firebaseLogout = f.logout;
   window.getLikes = f.getLikes; window.addLike = f.addLike; window.removeLike = f.removeLike;
   window.getSuperLikes = f.getSuperLikes; window.addSuperLike = f.addSuperLike; window.removeSuperLike = f.removeSuperLike;
   window.getPassed = f.getPassed; window.addPassed = f.addPassed; window.removePassed = f.removePassed;
