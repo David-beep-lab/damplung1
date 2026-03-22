@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0a0a0f">
   <meta name="description" content="Find your co-founder, team, and talents">
   <title>DAMPLUNG - Find your co-founder, team, and talents</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
@@ -216,9 +216,9 @@
       <h2 id="authModalTitle" data-i18n="auth.login">Log In</h2>
       <form id="authForm">
         <div id="authError" class="auth-error" style="display:none;color:var(--danger);font-size:0.9rem;margin-bottom:1rem;padding:0.5rem;background:rgba(239,68,68,0.1);border-radius:var(--radius-sm);"></div>
-        <div class="form-group" id="authNameGroup">
-          <label data-i18n="auth.name">Name</label>
-          <input type="text" id="authName" placeholder="Your name" data-i18n-placeholder="auth.namePlaceholder">
+        <div class="form-group" id="usernameGroup">
+          <label data-i18n="auth.username">Username</label>
+          <input type="text" id="authUsername" required placeholder="Enter your name" data-i18n-placeholder="auth.usernamePlaceholder">
         </div>
         <div class="form-group">
           <label data-i18n="auth.email">Email</label>
@@ -228,18 +228,20 @@
           <label data-i18n="auth.password">Password</label>
           <input type="password" id="authPassword" required placeholder="••••••••" data-i18n-placeholder="auth.passwordPlaceholder">
         </div>
-        <div class="form-group" id="authRoleGroup">
-          <label data-i18n="auth.role">Role</label>
-          <select id="authRole">
-            <option value="founder">Founder</option>
-            <option value="full-stack-developer">Full-stack Developer</option>
-            <option value="frontend-developer">Frontend Developer</option>
-            <option value="backend-developer">Backend Developer</option>
-            <option value="product-manager">Product Manager</option>
-            <option value="ui-designer">UI Designer</option>
-            <option value="digital-marketer">Digital Marketer</option>
-            <option value="other">Other</option>
+        <div class="form-group" id="userTypeGroup">
+          <label data-i18n="auth.userType">I am a</label>
+          <select id="authUserType">
+            <option value="talent" data-i18n="auth.talent">Talent</option>
+            <option value="founder" data-i18n="auth.founder">Founder</option>
           </select>
+        </div>
+        <div class="form-group" id="roleGroup">
+          <label data-i18n="auth.role">Role</label>
+          <div id="authRoleMultiselect" class="multiselect-container"></div>
+        </div>
+        <div class="form-group" id="focusGroup">
+          <label data-i18n="auth.focus">Focus</label>
+          <div id="authFocusMultiselect" class="multiselect-container"></div>
         </div>
         <button type="submit" class="btn btn-primary" style="width: 100%;" id="authSubmitBtn">Log In</button>
       </form>
