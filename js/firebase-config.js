@@ -1,10 +1,10 @@
-// Add your Firebase credentials (from Firebase Console)
-// Leave as YOUR_API_KEY to use local storage only
-var firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA8XK9exCuiTEXil6uwqe5CjrzyBwziN-M",
+  authDomain: "damplung-app.firebaseapp.com",
+  projectId: "damplung-app",
+  storageBucket: "damplung-app.firebasestorage.app",
+  messagingSenderId: "148731902728",
+  appId: "1:148731902728:web:4d5ce0482174c6408d4abd",
+  measurementId: "G-VWKCWC671C"
 };
